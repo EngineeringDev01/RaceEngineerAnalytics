@@ -257,7 +257,6 @@ if not selected_y_channels:
     )
     st.stop()
 
-
 try:
     figure = plotter.create_channel_plot(
         x_channel=x_channel,
@@ -270,38 +269,17 @@ try:
         width="stretch",
     )
 
-except Exception as error:
-    st.error(
-        "The dynamic telemetry plot "
-        "could not be generated."
-    )
-    st.exception(error)
-
-
-try:
-    plotter = TelemetryPlotter(
-        session.dataframe
-    )
-
-    figure = (
-        plotter.speed_throttle_brake()
-    )
-
-    st.plotly_chart(
-        figure,
-        width="stretch",
-    )
-
 except KeyError as error:
     st.warning(
-        "The file was imported successfully, "
-        "but the standard Speed/Throttle/Brake "
-        f"view could not be generated: {error}"
+        "A required telemetry channel could not be resolved: "
+        f"{error}"
     )
+
+except ValueError as error:
+    st.warning(str(error))
 
 except Exception as error:
     st.error(
-        "The telemetry chart could not be generated."
+        "The dynamic telemetry plot could not be generated."
     )
-
     st.exception(error)

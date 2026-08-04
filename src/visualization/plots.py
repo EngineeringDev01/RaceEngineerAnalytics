@@ -3,19 +3,24 @@ from collections.abc import Sequence
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-from src.core.channels import CHANNEL_DEFINITIONS
+from src.core.telemetry_resolver import TelemetryResolver
 from src.core.telemetry_session import TelemetrySession
 
 
 class TelemetryPlotter:
+    """Create interactive telemetry plots from canonical channels."""
+
     def __init__(
         self,
         session: TelemetrySession,
     ) -> None:
         self.session = session
+        self.resolver = TelemetryResolver(session)
 
-    def available_canonical_channels(self) -> dict[str, str]:
-        return self.session.resolved_channels()
+    def available_canonical_channels(
+        self,
+    ) -> dict[str, str]:
+        return self.resolver.available_channels()
 
     def create_channel_plot(
         self,
@@ -28,14 +33,24 @@ class TelemetryPlotter:
                 "At least one Y-axis channel must be selected."
             )
 
-        x_source_name = self.session.resolve_channel(x_channel)
-
-        if x_source_name is None:
+        if not self.resolver.has_channel(x_channel):
             raise KeyError(
                 f"X-axis channel '{x_channel}' is unavailable."
             )
 
-        x_data = self.session.get_canonical_channel(x_channel)
+        unavailable_channels = [
+            channel
+            for channel in y_channels
+            if not self.resolver.has_channel(channel)
+        ]
+
+        if unavailable_channels:
+            raise KeyError(
+                "Unavailable Y-axis channels: "
+                + ", ".join(unavailable_channels)
+            )
+
+        x_data = self.resolver.channel(x_channel)
 
         if separate_axes:
             figure = self._create_separate_axis_plot(
@@ -50,16 +65,25 @@ class TelemetryPlotter:
                 y_channels=y_channels,
             )
 
-
         figure.update_layout(
             title="Dynamic Telemetry Viewer",
             hovermode="x unified",
-            height=max(500, 250 * len(y_channels)),
+            height=max(
+                500,
+                250 * len(y_channels),
+            ),
             margin=dict(
                 l=70,
                 r=40,
                 t=70,
                 b=60,
+            ),
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=1.01,
+                xanchor="left",
+                x=0,
             ),
         )
 
@@ -78,43 +102,47 @@ class TelemetryPlotter:
             vertical_spacing=0.03,
         )
 
-        x_label = self._display_name(x_channel)
-        x_unit = self._unit(x_channel)
+        x_label = self.resolver.display_name(
+            x_channel
+        )
+        x_unit = self.resolver.channel_unit(
+            x_channel
+        )
 
         for row, canonical_name in enumerate(
             y_channels,
             start=1,
         ):
-            source_name = self.session.resolve_channel(
+            y_data = self.resolver.channel(
                 canonical_name
             )
 
-            if source_name is None:
-                continue
+            source_name = (
+                self.resolver.source_channel_name(
+                    canonical_name
+                )
+            )
 
-            y_data = self.session.get_canonical_channel(
+            display_name = self.resolver.display_name(
                 canonical_name
             )
 
-            label = self._display_name(canonical_name)
-            unit = self._unit(canonical_name)
+            unit = self.resolver.channel_unit(
+                canonical_name
+            )
 
             figure.add_trace(
                 go.Scatter(
                     x=x_data,
                     y=y_data,
-                    name=label,
+                    name=display_name,
                     mode="lines",
-                    customdata=[source_name] * len(y_data),
-                    hovertemplate=(
-                        f"{label}: %{{y:.3f}}"
-                        f"{f' {unit}' if unit else ''}"
-                        "<br>"
-                        f"{x_label}: %{{x:.3f}}"
-                        f"{f' {x_unit}' if x_unit else ''}"
-                        "<br>"
-                        f"Source: {source_name}"
-                        "<extra></extra>"
+                    hovertemplate=self._hover_template(
+                        x_label=x_label,
+                        x_unit=x_unit,
+                        y_label=display_name,
+                        y_unit=unit,
+                        source_name=source_name,
                     ),
                 ),
                 row=row,
@@ -122,18 +150,18 @@ class TelemetryPlotter:
             )
 
             figure.update_yaxes(
-                title_text=(
-                    f"{label}"
-                    f"{f' [{unit}]' if unit else ''}"
+                title_text=self._axis_title(
+                    display_name,
+                    unit,
                 ),
                 row=row,
                 col=1,
             )
 
         figure.update_xaxes(
-            title_text=(
-                f"{x_label}"
-                f"{f' [{x_unit}]' if x_unit else ''}"
+            title_text=self._axis_title(
+                x_label,
+                x_unit,
             ),
             row=len(y_channels),
             col=1,
@@ -149,78 +177,102 @@ class TelemetryPlotter:
     ) -> go.Figure:
         figure = go.Figure()
 
-        x_label = self._display_name(x_channel)
-        x_unit = self._unit(x_channel)
+        x_label = self.resolver.display_name(
+            x_channel
+        )
+
+        x_unit = self.resolver.channel_unit(
+            x_channel
+        )
 
         for canonical_name in y_channels:
-            source_name = self.session.resolve_channel(
+            y_data = self.resolver.channel(
                 canonical_name
             )
 
-            if source_name is None:
-                continue
+            source_name = (
+                self.resolver.source_channel_name(
+                    canonical_name
+                )
+            )
 
-            y_data = self.session.get_canonical_channel(
+            display_name = self.resolver.display_name(
                 canonical_name
             )
 
-            label = self._display_name(canonical_name)
-            unit = self._unit(canonical_name)
+            unit = self.resolver.channel_unit(
+                canonical_name
+            )
 
             figure.add_trace(
                 go.Scatter(
                     x=x_data,
                     y=y_data,
-                    name=label,
+                    name=self._trace_name(
+                        display_name,
+                        unit,
+                    ),
                     mode="lines",
-                    hovertemplate=(
-                        f"{label}: %{{y:.3f}}"
-                        f"{f' {unit}' if unit else ''}"
-                        "<br>"
-                        f"{x_label}: %{{x:.3f}}"
-                        f"{f' {x_unit}' if x_unit else ''}"
-                        "<br>"
-                        f"Source: {source_name}"
-                        "<extra></extra>"
+                    hovertemplate=self._hover_template(
+                        x_label=x_label,
+                        x_unit=x_unit,
+                        y_label=display_name,
+                        y_unit=unit,
+                        source_name=source_name,
                     ),
                 )
             )
 
         figure.update_xaxes(
-            title_text=(
-                f"{x_label}"
-                f"{f' [{x_unit}]' if x_unit else ''}"
+            title_text=self._axis_title(
+                x_label,
+                x_unit,
             )
         )
 
         figure.update_yaxes(
-            title_text="Selected channels"
+            title_text="Selected telemetry channels"
         )
 
         return figure
 
     @staticmethod
-    def _display_name(
-        canonical_name: str,
+    def _axis_title(
+        label: str,
+        unit: str | None,
     ) -> str:
-        definition = CHANNEL_DEFINITIONS.get(
-            canonical_name
-        )
+        if unit:
+            return f"{label} [{unit}]"
 
-        if definition is None:
-            return canonical_name
-
-        return definition.display_name
+        return label
 
     @staticmethod
-    def _unit(
-        canonical_name: str,
-    ) -> str | None:
-        definition = CHANNEL_DEFINITIONS.get(
-            canonical_name
+    def _trace_name(
+        label: str,
+        unit: str | None,
+    ) -> str:
+        if unit:
+            return f"{label} [{unit}]"
+
+        return label
+
+    @staticmethod
+    def _hover_template(
+        x_label: str,
+        x_unit: str | None,
+        y_label: str,
+        y_unit: str | None,
+        source_name: str | None,
+    ) -> str:
+        x_suffix = f" {x_unit}" if x_unit else ""
+        y_suffix = f" {y_unit}" if y_unit else ""
+        source = source_name or "Unknown"
+
+        return (
+            f"{y_label}: %{{y:.3f}}{y_suffix}"
+            "<br>"
+            f"{x_label}: %{{x:.3f}}{x_suffix}"
+            "<br>"
+            f"Source channel: {source}"
+            "<extra></extra>"
         )
-
-        if definition is None:
-            return None
-
-        return definition.unit
