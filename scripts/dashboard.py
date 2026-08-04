@@ -13,7 +13,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from src.services.telemetry_service import TelemetryService
 from src.visualization.plots import TelemetryPlotter
-
+from src.analysis.lap_detector import LapDetector
 
 st.set_page_config(
     page_title="Race Engineer Analytics",
@@ -290,3 +290,136 @@ except Exception as error:
         "The dynamic telemetry plot could not be generated."
     )
     st.exception(error)
+st.divider()
+st.subheader("Lap Detection and Comparison")
+
+lap_detector = LapDetector(session)
+lap_result = lap_detector.detect()
+
+lap_column, method_column = st.columns(2)
+
+lap_column.metric(
+    "Detected Laps",
+    lap_result.lap_count,
+)
+
+method_column.metric(
+    "Detection Method",
+    lap_result.method,
+)
+
+for warning in lap_result.warnings:
+    st.warning(warning)
+
+
+lap_rows = [
+    {
+        "Lap": lap.number,
+        "Lap Time [s]": (
+            round(lap.lap_time_s, 3)
+            if lap.lap_time_s is not None
+            else None
+        ),
+        "Start Sample": lap.telemetry_start_index,
+        "End Sample": lap.telemetry_end_index,
+        "Samples": (
+            lap.telemetry_end_index
+            - lap.telemetry_start_index
+            + 1
+            if lap.telemetry_start_index is not None
+            and lap.telemetry_end_index is not None
+            else None
+        ),
+    }
+    for lap in lap_result.laps
+]
+
+st.dataframe(
+    lap_rows,
+    width="stretch",
+    hide_index=True,
+)
+
+
+if lap_result.lap_count < 2:
+    st.info(
+        "This file contains fewer than two detected laps. "
+        "Upload a full multi-lap session to enable lap comparison."
+    )
+
+else:
+    lap_options = {
+        lap.number: lap
+        for lap in lap_result.laps
+    }
+
+    selected_lap_numbers = st.multiselect(
+        "Laps to compare",
+        options=list(lap_options),
+        default=list(lap_options)[:2],
+        format_func=lambda value: f"Lap {value}",
+    )
+
+    comparison_channels = [
+        channel
+        for channel in (
+            "speed",
+            "throttle",
+            "brake_front",
+            "brake",
+            "steering",
+            "rpm",
+            "gear",
+        )
+        if channel in resolved_channels
+    ]
+
+    default_comparison_channels = [
+        channel
+        for channel in (
+            "speed",
+            "throttle",
+            "brake_front",
+        )
+        if channel in comparison_channels
+    ]
+
+    selected_comparison_channels = st.multiselect(
+        "Lap comparison channels",
+        options=comparison_channels,
+        default=default_comparison_channels,
+        format_func=lambda value: channel_labels[value],
+    )
+
+    if len(selected_lap_numbers) < 2:
+        st.info("Select at least two laps.")
+
+    elif not selected_comparison_channels:
+        st.info(
+            "Select at least one lap-comparison channel."
+        )
+
+    else:
+        selected_laps = [
+            lap_options[number]
+            for number in selected_lap_numbers
+        ]
+
+        try:
+            comparison_figure = (
+                plotter.create_lap_comparison_plot(
+                    laps=selected_laps,
+                    channels=selected_comparison_channels,
+                )
+            )
+
+            st.plotly_chart(
+                comparison_figure,
+                width="stretch",
+            )
+
+        except Exception as error:
+            st.error(
+                "The selected laps could not be compared."
+            )
+            st.exception(error)

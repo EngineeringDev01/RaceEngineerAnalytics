@@ -5,7 +5,8 @@ from plotly.subplots import make_subplots
 
 from src.core.telemetry_resolver import TelemetryResolver
 from src.core.telemetry_session import TelemetrySession
-
+from src.analysis.lap_comparison import LapComparison
+from src.domain.lap import Lap
 
 class TelemetryPlotter:
     """Create interactive telemetry plots from canonical channels."""
@@ -232,6 +233,95 @@ class TelemetryPlotter:
 
         figure.update_yaxes(
             title_text="Selected telemetry channels"
+        )
+
+        return figure
+
+    def create_lap_comparison_plot(
+        self,
+        laps: Sequence[Lap],
+        channels: Sequence[str],
+        points: int = 1000,
+    ) -> go.Figure:
+        comparison = LapComparison(
+            self.session
+        )
+
+        prepared_laps = comparison.prepare(
+            laps=laps,
+            channels=channels,
+            points=points,
+        )
+
+        figure = make_subplots(
+            rows=len(channels),
+            cols=1,
+            shared_xaxes=True,
+            vertical_spacing=0.03,
+        )
+
+        for row, canonical_name in enumerate(
+            channels,
+            start=1,
+        ):
+            display_name = self.resolver.display_name(
+                canonical_name
+            )
+
+            unit = self.resolver.channel_unit(
+                canonical_name
+            )
+
+            for lap_number, dataframe in prepared_laps.items():
+                figure.add_trace(
+                    go.Scatter(
+                        x=dataframe["lap_distance"],
+                        y=dataframe[canonical_name],
+                        name=f"Lap {lap_number} — {display_name}",
+                        mode="lines",
+                        legendgroup=f"lap-{lap_number}",
+                        hovertemplate=(
+                            f"Lap {lap_number}"
+                            "<br>"
+                            f"{display_name}: %{{y:.3f}}"
+                            f"{f' {unit}' if unit else ''}"
+                            "<br>"
+                            "Lap Distance: %{x:.1f} m"
+                            "<extra></extra>"
+                        ),
+                    ),
+                    row=row,
+                    col=1,
+                )
+
+            figure.update_yaxes(
+                title_text=self._axis_title(
+                    display_name,
+                    unit,
+                ),
+                row=row,
+                col=1,
+            )
+
+        figure.update_xaxes(
+            title_text="Lap Distance [m]",
+            row=len(channels),
+            col=1,
+        )
+
+        figure.update_layout(
+            title="Lap Comparison",
+            hovermode="x unified",
+            height=max(
+                500,
+                250 * len(channels),
+            ),
+            margin=dict(
+                l=70,
+                r=40,
+                t=70,
+                b=60,
+            ),
         )
 
         return figure

@@ -208,6 +208,15 @@ class TelemetryResolver:
     def longitudinal_g(self) -> pd.Series:
         return self.channel("longitudinal_g")
 
+    def lap_number(self) -> pd.Series:
+        return self.channel("lap_number")
+
+    def lap_distance(self) -> pd.Series:
+        return self.channel("lap_distance")
+
+    def lap_time(self) -> pd.Series:
+        return self.channel("lap_time")
+
     def summary(self) -> dict[str, Any]:
         """Return a summary of the resolved engineering data."""
         return {

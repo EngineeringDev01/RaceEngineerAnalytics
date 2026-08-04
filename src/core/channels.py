@@ -157,6 +157,43 @@ CHANNEL_DEFINITIONS: dict[str, ChannelDefinition] = {
             "Gear Number",
         ),
     ),
+    "lap_number": ChannelDefinition(
+        canonical_name="lap_number",
+        display_name="Lap Number",
+        aliases=(
+            "Lap",
+            "Lap Number",
+            "Lap No",
+            "LapNumber",
+            "LAP",
+            "nLap",
+        ),
+    ),
+    "lap_distance": ChannelDefinition(
+        canonical_name="lap_distance",
+        display_name="Lap Distance",
+        unit="m",
+        aliases=(
+            "Lap Distance",
+            "LapDistance",
+            "Distance Lap",
+            "Dist Lap",
+            "sLap",
+        ),
+    ),
+    "lap_time": ChannelDefinition(
+        canonical_name="lap_time",
+        display_name="Lap Time",
+        unit="s",
+        aliases=(
+            "Lap Time",
+            "LapTime",
+            "Current Lap Time",
+            "Time Lap",
+            "tLap",
+        ),
+    ),
+
 }
 
 
