@@ -4,6 +4,11 @@ from typing import Any
 
 import pandas as pd
 
+from src.core.channels import (
+    CHANNEL_DEFINITIONS,
+    find_matching_channel,
+)
+
 
 @dataclass
 class TelemetrySession:
@@ -31,11 +36,51 @@ class TelemetrySession:
     def get_channel(self, channel_name: str) -> pd.Series:
         if not self.has_channel(channel_name):
             raise KeyError(
-                f"Channel '{channel_name}' is not available in "
-                f"'{self.filename}'."
+                f"Channel '{channel_name}' is not available "
+                f"in '{self.filename}'."
             )
 
         return self.dataframe[channel_name]
+
+    def resolve_channel(
+        self,
+        canonical_name: str,
+    ) -> str | None:
+        return find_matching_channel(
+            self.dataframe.columns,
+            canonical_name,
+        )
+
+    def has_canonical_channel(
+        self,
+        canonical_name: str,
+    ) -> bool:
+        return self.resolve_channel(canonical_name) is not None
+
+    def get_canonical_channel(
+        self,
+        canonical_name: str,
+    ) -> pd.Series:
+        source_channel = self.resolve_channel(canonical_name)
+
+        if source_channel is None:
+            raise KeyError(
+                f"Canonical channel '{canonical_name}' "
+                f"is unavailable in '{self.filename}'."
+            )
+
+        return self.dataframe[source_channel]
+
+    def resolved_channels(self) -> dict[str, str]:
+        resolved: dict[str, str] = {}
+
+        for canonical_name in CHANNEL_DEFINITIONS:
+            source_channel = self.resolve_channel(canonical_name)
+
+            if source_channel is not None:
+                resolved[canonical_name] = source_channel
+
+        return resolved
 
     def summary(self) -> dict[str, Any]:
         return {
@@ -44,4 +89,5 @@ class TelemetrySession:
             "samples": self.samples,
             "channels": len(self.channels),
             "metadata": self.metadata,
+            "resolved_channels": self.resolved_channels(),
         }
