@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from src.core.session import TelemetrySession
+from src.core.telemetry_session import TelemetrySession
 from src.importers.base import TelemetryImporter
 from src.importers.generic_csv import GenericCSVImporter
 from src.importers.motec import MoTeCCSVImporter

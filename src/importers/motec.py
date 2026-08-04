@@ -4,7 +4,7 @@ from typing import Any
 
 import pandas as pd
 
-from src.core.session import TelemetrySession
+from src.core.telemetry_session import TelemetrySession
 from src.importers.base import TelemetryImporter
 
 

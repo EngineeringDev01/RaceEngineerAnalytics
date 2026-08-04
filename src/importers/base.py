@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
 
-from src.core.session import TelemetrySession
+from src.core.telemetry_session import TelemetrySession
 
 
 class TelemetryImporter(ABC):
