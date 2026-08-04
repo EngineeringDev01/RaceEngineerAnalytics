@@ -165,9 +165,117 @@ with st.expander(
     )
 
 
-st.subheader(
-    "Speed, Throttle and Brake"
+st.subheader("Dynamic Telemetry Viewer")
+
+plotter = TelemetryPlotter(session)
+
+resolved_channels = (
+    plotter.available_canonical_channels()
 )
+
+if not resolved_channels:
+    st.warning(
+        "No canonical engineering channels "
+        "could be resolved in this file."
+    )
+    st.stop()
+
+
+channel_labels = {
+    canonical_name: (
+        f"{canonical_name} "
+        f"← {source_name}"
+    )
+    for canonical_name, source_name
+    in resolved_channels.items()
+}
+
+
+possible_x_channels = [
+    channel
+    for channel in (
+        "distance",
+        "time",
+    )
+    if channel in resolved_channels
+]
+
+
+if not possible_x_channels:
+    st.warning(
+        "Neither Distance nor Time is available "
+        "for the X axis."
+    )
+    st.stop()
+
+
+default_x_index = 0
+
+x_channel = st.selectbox(
+    "X axis",
+    options=possible_x_channels,
+    index=default_x_index,
+    format_func=lambda value: channel_labels[value],
+)
+
+
+selectable_y_channels = [
+    channel
+    for channel in resolved_channels
+    if channel != x_channel
+]
+
+
+default_y_channels = [
+    channel
+    for channel in (
+        "speed",
+        "throttle",
+        "brake_front",
+    )
+    if channel in selectable_y_channels
+]
+
+
+selected_y_channels = st.multiselect(
+    "Telemetry channels",
+    options=selectable_y_channels,
+    default=default_y_channels,
+    format_func=lambda value: channel_labels[value],
+)
+
+
+separate_axes = st.checkbox(
+    "Display channels on separate synchronized plots",
+    value=True,
+)
+
+
+if not selected_y_channels:
+    st.info(
+        "Select at least one telemetry channel."
+    )
+    st.stop()
+
+
+try:
+    figure = plotter.create_channel_plot(
+        x_channel=x_channel,
+        y_channels=selected_y_channels,
+        separate_axes=separate_axes,
+    )
+
+    st.plotly_chart(
+        figure,
+        width="stretch",
+    )
+
+except Exception as error:
+    st.error(
+        "The dynamic telemetry plot "
+        "could not be generated."
+    )
+    st.exception(error)
 
 
 try:
