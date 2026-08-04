@@ -181,15 +181,22 @@ if not resolved_channels:
     st.stop()
 
 
-channel_labels = {
-    canonical_name: (
-        f"{canonical_name} "
-        f"← {source_name}"
-    )
-    for canonical_name, source_name
-    in resolved_channels.items()
-}
+channel_labels = {}
 
+for canonical_name, source_name in resolved_channels.items():
+    display_name = plotter.resolver.display_name(
+        canonical_name
+    )
+
+    unit = plotter.resolver.channel_unit(
+        canonical_name
+    )
+
+    unit_text = f" [{unit}]" if unit else ""
+
+    channel_labels[canonical_name] = (
+        f"{display_name}{unit_text} ← {source_name}"
+    )
 
 possible_x_channels = [
     channel
