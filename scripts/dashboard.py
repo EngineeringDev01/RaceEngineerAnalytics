@@ -21,112 +21,166 @@ st.set_page_config(
     layout="wide",
 )
 
+
 st.title("🏎️ Race Engineer Analytics")
 
-uploaded_file = st.file_uploader(
-    "Select a telemetry export",
-    type=["csv"],
-    help=(
-        "The original filename is retained. "
-        "MoTeC CSV and standard CSV files are currently supported."
-    ),
+st.write(
+    "Upload a telemetry CSV export. "
+    "MoTeC CSV and standard CSV files are currently supported."
 )
 
+
+uploaded_file = st.file_uploader(
+    "Select telemetry file",
+    type=["csv"],
+)
+
+
 if uploaded_file is None:
-    st.info("Select a telemetry file to begin the analysis.")
+    st.info("Select a CSV telemetry file to start the analysis.")
     st.stop()
 
 
-temporary_directory = Path(tempfile.gettempdir()) / "race_engineer_analytics"
+temporary_directory = (
+    Path(tempfile.gettempdir())
+    / "race_engineer_analytics"
+)
+
 temporary_directory.mkdir(
     parents=True,
     exist_ok=True,
 )
 
-temporary_file = temporary_directory / uploaded_file.name
-temporary_file.write_bytes(uploaded_file.getbuffer())
+
+temporary_file = (
+    temporary_directory
+    / uploaded_file.name
+)
+
+temporary_file.write_bytes(
+    uploaded_file.getbuffer()
+)
 
 
 try:
-    importer_factory = ImporterFactory()
-    session = importer_factory.load(temporary_file)
+    factory = ImporterFactory()
+
+    session = factory.load(
+        temporary_file
+    )
 
 except Exception as error:
-    st.error("The telemetry file could not be imported.")
+    st.error(
+        "The telemetry file could not be imported."
+    )
+
     st.exception(error)
     st.stop()
 
 
 st.subheader("Session Summary")
 
-file_column, system_column, samples_column, channels_column = st.columns(4)
 
-file_column.metric(
-    "File",
-    session.filename,
+file_column, source_column, samples_column, channels_column = (
+    st.columns(4)
 )
 
-system_column.metric(
-    "Source",
-    session.source_system,
+
+file_column.metric(
+    label="File",
+    value=session.filename,
+)
+
+source_column.metric(
+    label="Source",
+    value=session.source_system,
 )
 
 samples_column.metric(
-    "Samples",
-    f"{session.samples:,}",
+    label="Samples",
+    value=f"{session.samples:,}",
 )
 
 channels_column.metric(
-    "Channels",
-    len(session.channels),
+    label="Channels",
+    value=len(session.channels),
 )
 
 
-metadata = session.metadata
+if session.metadata:
+    st.subheader("Session Metadata")
 
-if metadata:
     metadata_columns = st.columns(4)
 
     metadata_columns[0].metric(
-        "Vehicle",
-        metadata.get("Vehicle", "Unknown"),
+        label="Vehicle",
+        value=session.metadata.get(
+            "Vehicle",
+            "Unknown",
+        ),
     )
 
     metadata_columns[1].metric(
-        "Driver",
-        metadata.get("Driver", "Unknown"),
+        label="Driver",
+        value=session.metadata.get(
+            "Driver",
+            "Unknown",
+        ),
     )
 
     metadata_columns[2].metric(
-        "Venue",
-        metadata.get("Venue", "Unknown"),
+        label="Venue",
+        value=session.metadata.get(
+            "Venue",
+            "Unknown",
+        ),
     )
 
     metadata_columns[3].metric(
-        "Duration",
-        metadata.get("Duration", "Unknown"),
+        label="Duration",
+        value=session.metadata.get(
+            "Duration",
+            "Unknown",
+        ),
     )
 
 
-with st.expander("Available telemetry channels"):
+with st.expander(
+    "Available telemetry channels"
+):
+    channel_rows = []
+
+    for channel in session.channels:
+        channel_rows.append(
+            {
+                "Channel": channel,
+                "Unit": session.units.get(
+                    channel,
+                    "",
+                ),
+            }
+        )
+
     st.dataframe(
-        {
-            "Channel": session.channels,
-            "Unit": [
-                session.units.get(channel, "")
-                for channel in session.channels
-            ],
-        },
+        channel_rows,
         width="stretch",
         hide_index=True,
     )
 
 
-st.subheader("Speed, Throttle and Brake")
+st.subheader(
+    "Speed, Throttle and Brake"
+)
+
 
 try:
-    plotter = TelemetryPlotter(session.dataframe)
-    figure = plotter.speed_throttle_brake()
+    plotter = TelemetryPlotter(
+        session.dataframe
+    )
+
+    figure = (
+        plotter.speed_throttle_brake()
+    )
 
     st.plotly_chart(
         figure,
@@ -135,10 +189,14 @@ try:
 
 except KeyError as error:
     st.warning(
-        "The file was imported successfully, but the standard "
-        f"Speed/Throttle/Brake view cannot be generated: {error}"
+        "The file was imported successfully, "
+        "but the standard Speed/Throttle/Brake "
+        f"view could not be generated: {error}"
     )
 
 except Exception as error:
-    st.error("The telemetry chart could not be generated.")
+    st.error(
+        "The telemetry chart could not be generated."
+    )
+
     st.exception(error)
