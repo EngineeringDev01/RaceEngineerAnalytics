@@ -1,15 +1,13 @@
 from pathlib import Path
 
-from src.telemetry.importer import TelemetryImporter
-
 from src.analysis.performance import PerformanceAnalyzer
+from src.services.telemetry_service import TelemetryService
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 
 
-def main():
-
+def main() -> None:
     print("=" * 50)
     print("Race Engineer Analytics")
     print("=" * 50)
@@ -20,29 +18,31 @@ def main():
 
     print(f"\nLoading telemetry: {csv_file.name}")
 
-    session = TelemetryImporter.load_motec_csv(csv_file)
+    telemetry_service = TelemetryService()
+    session = telemetry_service.load(csv_file)
 
     print("\nSession Summary")
     print("-" * 50)
 
-    session.summary()
+    summary = session.summary()
+
+    for key, value in summary.items():
+        if key != "resolved_channels":
+            print(f"{key}: {value}")
 
     performance = PerformanceAnalyzer(
-    session.dataframe
+        session.dataframe
     )
 
     performance.summary()
 
-    print("\nDetected Engineering Channels")
+    print("\nResolved Engineering Channels")
     print("-" * 50)
 
-    channels = session.detect_channels()
+    channels = session.resolved_channels()
 
-    for group, values in channels.items():
-
-        print(f"\n{group.upper()}")
-
-        print(values)
+    for canonical_name, source_name in channels.items():
+        print(f"{canonical_name}: {source_name}")
 
 
 if __name__ == "__main__":

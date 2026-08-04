@@ -11,7 +11,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 
-from src.importers.factory import ImporterFactory
+from src.services.telemetry_service import TelemetryService
 from src.visualization.plots import TelemetryPlotter
 
 
@@ -63,11 +63,8 @@ temporary_file.write_bytes(
 
 
 try:
-    factory = ImporterFactory()
-
-    session = factory.load(
-        temporary_file
-    )
+    telemetry_service = TelemetryService()
+    session = telemetry_service.load(temporary_file)
 
 except Exception as error:
     st.error(
