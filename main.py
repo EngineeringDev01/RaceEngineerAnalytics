@@ -2,6 +2,8 @@ from pathlib import Path
 
 from src.telemetry.importer import TelemetryImporter
 
+from src.analysis.performance import PerformanceAnalyzer
+
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 
@@ -24,6 +26,12 @@ def main():
     print("-" * 50)
 
     session.summary()
+
+    performance = PerformanceAnalyzer(
+    session.dataframe
+    )
+
+    performance.summary()
 
     print("\nDetected Engineering Channels")
     print("-" * 50)
