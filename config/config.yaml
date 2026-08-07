@@ -1,0 +1,23 @@
+application:
+  name: "Race Engineer Analytics"
+  version: "0.4.0"
+
+telemetry:
+  temporary_folder_name: "race_engineer_analytics"
+
+engineering:
+  full_throttle_threshold_pct: 98.0
+  brake_active_threshold_bar: 1.0
+
+plotting:
+  default_x_axis: "distance"
+  separate_axes: true
+  track_map_height: 500
+
+database:
+  enabled: false
+  host: "localhost"
+  port: 3306
+  database: "race_engineering"
+  username: ""
+  password: ""

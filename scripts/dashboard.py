@@ -70,6 +70,8 @@ try:
 
     app = Application()
     session = app.load_telemetry(temporary_file)
+    app.settings.application.name
+    app.settings.application.version
 
 except Exception as error:
     st.error(

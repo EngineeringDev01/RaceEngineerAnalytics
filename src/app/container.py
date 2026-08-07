@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from src.app.settings import Settings
 from src.importers.factory import ImporterFactory
 from src.services.kpi_export_service import KPIExportService
 from src.services.telemetry_service import TelemetryService
@@ -11,12 +12,9 @@ from src.services.telemetry_service import TelemetryService
 class ServiceContainer:
     """
     Application dependency container.
-
-    The container owns shared services and their dependencies.
-    User interfaces such as Streamlit, CLI, REST API, or future desktop
-    applications should obtain services from this object instead of
-    creating them directly.
     """
+
+    settings: Settings
 
     importer_factory: ImporterFactory = field(
         default_factory=ImporterFactory

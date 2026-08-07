@@ -18,12 +18,23 @@ class KPIEngine:
     Generic CSV, or future telemetry sources.
     """
 
+
     def __init__(
         self,
         session: TelemetrySession,
+        full_throttle_threshold_pct: float = 98.0,
+        brake_active_threshold_bar: float = 1.0,
     ) -> None:
         self.session = session
         self.resolver = TelemetryResolver(session)
+
+        self.full_throttle_threshold_pct = (
+            full_throttle_threshold_pct
+        )
+
+        self.brake_active_threshold_bar = (
+            brake_active_threshold_bar
+        )
 
     def calculate(self) -> dict[str, list[KPI]]:
         """
@@ -163,7 +174,7 @@ class KPIEngine:
             )
 
             full_throttle_percentage = float(
-                (throttle >= 98.0).mean()
+                (throttle >= self.full_throttle_threshold_pct).mean()
                 * 100.0
             )
 
@@ -237,7 +248,7 @@ class KPIEngine:
                 )
 
                 brake_usage_percentage = float(
-                    (brake > 1.0).mean()
+                    (brake > self.brake_active_threshold_bar).mean()
                     * 100.0
                 )
 

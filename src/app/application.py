@@ -4,6 +4,7 @@ from pathlib import Path
 
 from src.analysis.kpi_engine import KPIEngine
 from src.app.container import ServiceContainer
+from src.app.settings import Settings, SettingsLoader
 from src.core.telemetry_session import TelemetrySession
 from src.services.kpi_export_service import KPIExportService
 from src.services.telemetry_service import TelemetryService
@@ -12,20 +13,36 @@ from src.services.telemetry_service import TelemetryService
 class Application:
     """
     Main application entry point.
-
-    This class coordinates application services without depending on
-    Streamlit, Plotly, MySQL, or any other user-interface technology.
     """
 
     def __init__(
         self,
         container: ServiceContainer | None = None,
+        config_path: str | Path | None = None,
     ) -> None:
-        self.container = (
-            container
-            if container is not None
-            else ServiceContainer()
+        if container is not None:
+            self.container = container
+            return
+
+        project_root = Path(__file__).resolve().parents[2]
+
+        resolved_config_path = (
+            Path(config_path)
+            if config_path is not None
+            else project_root / "config" / "config.yaml"
         )
+
+        settings = SettingsLoader(
+            resolved_config_path
+        ).load()
+
+        self.container = ServiceContainer(
+            settings=settings
+        )
+
+    @property
+    def settings(self) -> Settings:
+        return self.container.settings
 
     @property
     def telemetry_service(self) -> TelemetryService:
@@ -39,34 +56,30 @@ class Application:
         self,
         file_path: str | Path,
     ) -> TelemetrySession:
-        """
-        Load and validate telemetry through the application service layer.
-        """
         return self.telemetry_service.load(
             file_path
         )
 
-    @staticmethod
     def create_kpi_engine(
+        self,
         session: TelemetrySession,
     ) -> KPIEngine:
-        """
-        Create a KPI engine for an imported telemetry session.
-
-        The KPI engine currently depends on a specific session and is
-        therefore created per analysis operation rather than shared.
-        """
-        return KPIEngine(session)
+        return KPIEngine(
+            session=session,
+            full_throttle_threshold_pct=(
+                self.settings.engineering
+                .full_throttle_threshold_pct
+            ),
+            brake_active_threshold_bar=(
+                self.settings.engineering
+                .brake_active_threshold_bar
+            ),
+        )
 
     def calculate_kpis(
         self,
         session: TelemetrySession,
     ) -> dict:
-        """
-        Calculate all currently supported engineering KPIs.
-        """
-        engine = self.create_kpi_engine(
+        return self.create_kpi_engine(
             session
-        )
-
-        return engine.calculate()
+        ).calculate()
