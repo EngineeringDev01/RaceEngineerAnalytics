@@ -1,8 +1,7 @@
 from pathlib import Path
 
 from src.analysis.performance import PerformanceAnalyzer
-from src.services.telemetry_service import TelemetryService
-
+from src.app import Application
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 
@@ -18,8 +17,8 @@ def main() -> None:
 
     print(f"\nLoading telemetry: {csv_file.name}")
 
-    telemetry_service = TelemetryService()
-    session = telemetry_service.load(csv_file)
+    app = Application()
+    session = app.load_telemetry(csv_file)
 
     print("\nSession Summary")
     print("-" * 50)

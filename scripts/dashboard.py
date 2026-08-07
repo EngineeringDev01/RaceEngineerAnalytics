@@ -11,8 +11,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-
-from src.services.telemetry_service import TelemetryService
+from src.app import Application
 from src.visualization.plots import TelemetryPlotter
 from src.analysis.lap_detector import LapDetector
 from src.core.telemetry_resolver import TelemetryResolver
@@ -68,8 +67,9 @@ temporary_file.write_bytes(
 
 
 try:
-    telemetry_service = TelemetryService()
-    session = telemetry_service.load(temporary_file)
+
+    app = Application()
+    session = app.load_telemetry(temporary_file)
 
 except Exception as error:
     st.error(
@@ -153,7 +153,8 @@ st.subheader("Engineering Summary")
 kpi_engine = KPIEngine(session)
 
 try:
-    kpi_results = kpi_engine.calculate()
+
+    kpi_results = app.calculate_kpis(session)
 
 except Exception as error:
     st.error(
