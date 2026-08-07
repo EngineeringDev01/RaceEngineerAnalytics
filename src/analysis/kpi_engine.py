@@ -283,11 +283,161 @@ class KPIEngine:
 
     def vehicle_dynamics(self) -> list[KPI]:
         """
-        Vehicle-dynamics KPIs.
+        Calculate vehicle-dynamics KPIs.
 
-        Implemented in Sprint 2.7.5.
+        KPIs currently supported:
+        - Maximum Lateral G
+        - Minimum Lateral G
+        - Average Absolute Lateral G
+        - Maximum Longitudinal G
+        - Minimum Longitudinal G
+        - Average Absolute Longitudinal G
         """
-        return []
+
+        kpis: list[KPI] = []
+
+        # --------------------------------------------------
+        # Lateral acceleration
+        # --------------------------------------------------
+
+        lateral_g = self._numeric_channel(
+            "lateral_g"
+        )
+
+        if lateral_g is not None:
+
+            source_channel = (
+                self.resolver.source_channel_name(
+                    "lateral_g"
+                )
+                or ""
+            )
+
+            unit = (
+                self.resolver.channel_unit(
+                    "lateral_g"
+                )
+                or "g"
+            )
+
+            kpis.append(
+                KPI(
+                    name="Maximum Lateral G",
+                    value=float(lateral_g.max()),
+                    unit=unit,
+                    category="Vehicle Dynamics",
+                    source_channel=source_channel,
+                    description=(
+                        "Maximum positive lateral acceleration "
+                        "recorded during the telemetry window."
+                    ),
+                )
+            )
+
+            kpis.append(
+                KPI(
+                    name="Minimum Lateral G",
+                    value=float(lateral_g.min()),
+                    unit=unit,
+                    category="Vehicle Dynamics",
+                    source_channel=source_channel,
+                    description=(
+                        "Maximum negative lateral acceleration "
+                        "recorded during the telemetry window."
+                    ),
+                )
+            )
+
+            kpis.append(
+                KPI(
+                    name="Average Absolute Lateral G",
+                    value=float(
+                        lateral_g.abs().mean()
+                    ),
+                    unit=unit,
+                    category="Vehicle Dynamics",
+                    source_channel=source_channel,
+                    description=(
+                        "Average absolute lateral acceleration. "
+                        "Positive and negative cornering loads "
+                        "do not cancel each other."
+                    ),
+                )
+            )
+
+        # --------------------------------------------------
+        # Longitudinal acceleration
+        # --------------------------------------------------
+
+        longitudinal_g = self._numeric_channel(
+            "longitudinal_g"
+        )
+
+        if longitudinal_g is not None:
+
+            source_channel = (
+                self.resolver.source_channel_name(
+                    "longitudinal_g"
+                )
+                or ""
+            )
+
+            unit = (
+                self.resolver.channel_unit(
+                    "longitudinal_g"
+                )
+                or "g"
+            )
+
+            kpis.append(
+                KPI(
+                    name="Maximum Longitudinal G",
+                    value=float(
+                        longitudinal_g.max()
+                    ),
+                    unit=unit,
+                    category="Vehicle Dynamics",
+                    source_channel=source_channel,
+                    description=(
+                        "Maximum positive longitudinal "
+                        "acceleration recorded."
+                    ),
+                )
+            )
+
+            kpis.append(
+                KPI(
+                    name="Minimum Longitudinal G",
+                    value=float(
+                        longitudinal_g.min()
+                    ),
+                    unit=unit,
+                    category="Vehicle Dynamics",
+                    source_channel=source_channel,
+                    description=(
+                        "Maximum negative longitudinal "
+                        "acceleration recorded."
+                    ),
+                )
+            )
+
+            kpis.append(
+                KPI(
+                    name="Average Absolute Longitudinal G",
+                    value=float(
+                        longitudinal_g.abs().mean()
+                    ),
+                    unit=unit,
+                    category="Vehicle Dynamics",
+                    source_channel=source_channel,
+                    description=(
+                        "Average absolute longitudinal "
+                        "acceleration during the telemetry window."
+                    ),
+                )
+            )
+
+        return kpis
 
     def _numeric_channel(
         self,
