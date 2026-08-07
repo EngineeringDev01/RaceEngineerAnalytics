@@ -37,11 +37,74 @@ class KPIEngine:
 
     def performance(self) -> list[KPI]:
         """
-        Vehicle performance KPIs.
+        Calculate vehicle-performance KPIs.
 
-        Implemented in Sprint 2.7.3.
+        KPIs currently supported:
+        - Maximum Speed
+        - Average Speed
+        - Minimum Speed
+        - Maximum Engine RPM
+        - Average Engine RPM
         """
-        return []
+
+        kpis: list[KPI] = []
+
+        self._append_if_available(
+            kpis,
+            self._create_stat_kpi(
+                canonical_name="speed",
+                name="Maximum Speed",
+                category="Performance",
+                statistic=lambda values: values.max(),
+                description="Maximum recorded vehicle speed.",
+            ),
+        )
+
+        self._append_if_available(
+            kpis,
+            self._create_stat_kpi(
+                canonical_name="speed",
+                name="Average Speed",
+                category="Performance",
+                statistic=lambda values: values.mean(),
+                description="Average recorded vehicle speed.",
+            ),
+        )
+
+        self._append_if_available(
+            kpis,
+            self._create_stat_kpi(
+                canonical_name="speed",
+                name="Minimum Speed",
+                category="Performance",
+                statistic=lambda values: values.min(),
+                description="Minimum recorded vehicle speed.",
+            ),
+        )
+
+        self._append_if_available(
+            kpis,
+            self._create_stat_kpi(
+                canonical_name="rpm",
+                name="Maximum Engine RPM",
+                category="Performance",
+                statistic=lambda values: values.max(),
+                description="Maximum recorded engine speed.",
+            ),
+        )
+
+        self._append_if_available(
+            kpis,
+            self._create_stat_kpi(
+                canonical_name="rpm",
+                name="Average Engine RPM",
+                category="Performance",
+                statistic=lambda values: values.mean(),
+                description="Average recorded engine speed.",
+            ),
+        )
+
+        return kpis
 
     def driver_inputs(self) -> list[KPI]:
         """
