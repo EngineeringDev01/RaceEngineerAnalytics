@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-
+import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
@@ -24,11 +24,12 @@ class TelemetryPlotter:
         return self.resolver.available_channels()
 
     def create_channel_plot(
-        self,
-        x_channel: str,
-        y_channels: Sequence[str],
-        separate_axes: bool = True,
-    ) -> go.Figure:
+    self,
+    x_channel: str,
+    y_channels: Sequence[str],
+    separate_axes: bool = True,
+    selected_index: int | None = None,
+) -> go.Figure:
         if not y_channels:
             raise ValueError(
                 "At least one Y-axis channel must be selected."
@@ -87,6 +88,13 @@ class TelemetryPlotter:
                 x=0,
             ),
         )
+
+        if selected_index is not None:
+            self._add_selected_position(
+                figure=figure,
+                x_channel=x_channel,
+                selected_index=selected_index,
+            )
 
         return figure
 
@@ -325,6 +333,38 @@ class TelemetryPlotter:
         )
 
         return figure
+
+    def _add_selected_position(
+        self,
+        figure: go.Figure,
+        x_channel: str,
+        selected_index: int,
+    ) -> None:
+        safe_index = max(
+            0,
+            min(
+                int(selected_index),
+                self.session.samples - 1,
+            ),
+        )
+
+        x_data = pd.to_numeric(
+            self.resolver.channel(x_channel),
+            errors="coerce",
+        )
+
+        selected_x = x_data.iloc[safe_index]
+
+        if pd.isna(selected_x):
+            return
+
+        figure.add_vline(
+            x=float(selected_x),
+            line_width=2,
+            line_dash="dash",
+            annotation_text="Selected",
+            annotation_position="top",
+        )
 
     @staticmethod
     def _axis_title(

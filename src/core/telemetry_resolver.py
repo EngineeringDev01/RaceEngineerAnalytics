@@ -225,3 +225,32 @@ class TelemetryResolver:
             "samples": self.session.samples,
             "resolved_channels": self.available_channels(),
         }
+    def track_x(self) -> pd.Series:
+        return self.channel("track_x")
+
+    def track_y(self) -> pd.Series:
+        return self.channel("track_y")
+
+    def track_z(self) -> pd.Series:
+        return self.channel("track_z")
+
+    def gps_latitude(self) -> pd.Series:
+        return self.channel("gps_latitude")
+
+    def gps_longitude(self) -> pd.Series:
+        return self.channel("gps_longitude")
+    def has_track_map(self) -> bool:
+        has_cartesian_coordinates = (
+            self.has_channel("track_x")
+            and self.has_channel("track_y")
+        )   
+
+        has_geographic_coordinates = (
+            self.has_channel("gps_latitude")
+            and self.has_channel("gps_longitude")
+        )
+
+        return (
+            has_cartesian_coordinates
+            or has_geographic_coordinates
+        )

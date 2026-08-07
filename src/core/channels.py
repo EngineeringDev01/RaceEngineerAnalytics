@@ -193,7 +193,74 @@ CHANNEL_DEFINITIONS: dict[str, ChannelDefinition] = {
             "tLap",
         ),
     ),
-
+    "track_x": ChannelDefinition(
+        canonical_name="track_x",
+        display_name="Track X Position",
+        unit="m",
+        aliases=(
+            "X Circ Pos",
+            "Track X",
+            "X Position",
+            "GPS X",
+            "GPS_X",
+            "Pos X",
+            "Position X",
+            "xCar",
+        ),
+    ),
+    "track_y": ChannelDefinition(
+        canonical_name="track_y",
+        display_name="Track Y Position",
+        unit="m",
+        aliases=(
+            "Y Circ Pos",
+            "Track Y",
+            "Y Position",
+            "GPS Y",
+            "GPS_Y",
+            "Pos Y",
+            "Position Y",
+            "yCar",
+        ),
+    ),
+    "track_z": ChannelDefinition(
+        canonical_name="track_z",
+        display_name="Track Z Position",
+        unit="m",
+        aliases=(
+            "Z Circ Pos",
+            "Track Z",
+            "Z Position",
+            "GPS Z",
+            "GPS_Z",
+            "Pos Z",
+            "Position Z",
+            "zCar",
+        ),
+    ),
+    "gps_latitude": ChannelDefinition(
+        canonical_name="gps_latitude",
+        display_name="GPS Latitude",
+        unit="deg",
+        aliases=(
+            "GPS Latitude",
+            "Latitude",
+            "GPS Lat",
+            "Lat GPS",
+        ),
+    ),
+    "gps_longitude": ChannelDefinition(
+        canonical_name="gps_longitude",
+        display_name="GPS Longitude",
+        unit="deg",
+        aliases=(
+            "GPS Longitude",
+            "Longitude",
+            "GPS Lon",
+            "GPS Long",
+            "Lon GPS",
+        ),
+    ),
 }
 
 

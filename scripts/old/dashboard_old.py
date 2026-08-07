@@ -1,4 +1,3 @@
-import json
 import sys
 import tempfile
 from pathlib import Path
@@ -150,6 +149,7 @@ if session.metadata:
 st.divider()
 st.subheader("Engineering Summary")
 
+
 kpi_engine = KPIEngine(session)
 
 try:
@@ -240,56 +240,6 @@ for category_key, category_title in category_titles.items():
                         f"Source: "
                         f"{kpi.source_channel}"
                     )
-
-
-st.markdown("### KPI Export")
-
-kpi_dataframe = KPIExportService.to_dataframe(
-    kpi_results
-)
-
-st.dataframe(
-    kpi_dataframe,
-    width="stretch",
-    hide_index=True,
-)
-
-csv_data = kpi_dataframe.to_csv(
-    index=False
-).encode("utf-8")
-
-json_data = KPIExportService.to_records(
-    kpi_results
-)
-
-json_bytes = json.dumps(
-    json_data,
-    indent=2,
-    ensure_ascii=False,
-).encode("utf-8")
-
-export_column_1, export_column_2 = st.columns(2)
-
-with export_column_1:
-    st.download_button(
-        label="Download KPI CSV",
-        data=csv_data,
-        file_name=(
-            f"{Path(session.filename).stem}_kpis.csv"
-        ),
-        mime="text/csv",
-    )
-
-with export_column_2:
-    st.download_button(
-        label="Download KPI JSON",
-        data=json_bytes,
-        file_name=(
-            f"{Path(session.filename).stem}_kpis.json"
-        ),
-        mime="application/json",
-    )
-
 
 with st.expander(
     "Available telemetry channels"
