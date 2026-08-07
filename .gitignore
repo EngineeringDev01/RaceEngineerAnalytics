@@ -37,3 +37,6 @@ reports/
 # Windows
 Thumbs.db
 Desktop.ini
+
+data/database/
+*.db
