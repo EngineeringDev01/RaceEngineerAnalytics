@@ -14,6 +14,10 @@ plotting:
   separate_axes: true
   track_map_height: 500
 
+logging:
+  level: "INFO"
+  directory: "logs"
+
 database:
   enabled: false
   host: "localhost"

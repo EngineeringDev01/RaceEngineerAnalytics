@@ -40,6 +40,10 @@ class DatabaseSettings:
     username: str
     password: str
 
+@dataclass(frozen=True)
+class LoggingSettings:
+    level: str
+    directory: str
 
 @dataclass(frozen=True)
 class Settings:
@@ -47,6 +51,7 @@ class Settings:
     telemetry: TelemetrySettings
     engineering: EngineeringSettings
     plotting: PlottingSettings
+    logging: LoggingSettings
     database: DatabaseSettings
 
 
@@ -62,6 +67,7 @@ class SettingsLoader:
         self.config_path = Path(config_path)
 
     def load(self) -> Settings:
+
         if not self.config_path.exists():
             raise FileNotFoundError(
                 f"Configuration file not found: {self.config_path}"
@@ -80,6 +86,9 @@ class SettingsLoader:
                 raw_config
             ),
             plotting=self._load_plotting_settings(
+                raw_config
+            ),
+            logging=self._load_logging_settings(
                 raw_config
             ),
             database=self._load_database_settings(
@@ -264,3 +273,27 @@ class SettingsLoader:
                 )
             ),
         )
+
+    def _load_logging_settings(
+    self,
+    config: dict[str, Any],
+) -> LoggingSettings:
+        section = self._section(
+            config,
+            "logging",
+        )
+
+        return LoggingSettings(
+            level=str(
+                section.get(
+                    "level",
+                    "INFO",
+                )
+            ),
+            directory=str(
+                section.get(
+                    "directory",
+                    "logs",
+                )
+            ),
+    )
