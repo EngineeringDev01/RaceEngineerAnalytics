@@ -106,13 +106,180 @@ class KPIEngine:
 
         return kpis
 
+
     def driver_inputs(self) -> list[KPI]:
         """
-        Driver-input KPIs.
+        Calculate driver-input KPIs.
 
-        Implemented in Sprint 2.7.4.
+        KPIs currently supported:
+        - Average Throttle
+        - Maximum Throttle
+        - Full Throttle Percentage
+        - Maximum Brake Pressure
+        - Average Brake Pressure
+        - Brake Usage Percentage
         """
-        return []
+
+        kpis: list[KPI] = []
+
+        # --------------------------------------------------
+        # Throttle
+        # --------------------------------------------------
+
+        throttle = self._numeric_channel("throttle")
+
+        if throttle is not None:
+
+            source_channel = (
+                self.resolver.source_channel_name("throttle")
+                or ""
+            )
+
+            unit = (
+                self.resolver.channel_unit("throttle")
+                or "%"
+            )
+
+            kpis.append(
+                KPI(
+                    name="Average Throttle",
+                    value=float(throttle.mean()),
+                    unit=unit,
+                    category="Driver Inputs",
+                    source_channel=source_channel,
+                    description="Average throttle position during the telemetry window.",
+                )
+            )
+
+            kpis.append(
+                KPI(
+                    name="Maximum Throttle",
+                    value=float(throttle.max()),
+                    unit=unit,
+                    category="Driver Inputs",
+                    source_channel=source_channel,
+                    description="Maximum recorded throttle position.",
+                )
+            )
+
+            full_throttle_percentage = float(
+                (throttle >= 98.0).mean()
+                * 100.0
+            )
+
+            kpis.append(
+                KPI(
+                    name="Full Throttle",
+                    value=full_throttle_percentage,
+                    unit="%",
+                    category="Driver Inputs",
+                    source_channel=source_channel,
+                    description=(
+                        "Percentage of samples where throttle "
+                        "position is at least 98%."
+                    ),
+                )
+            )
+
+        # --------------------------------------------------
+        # Brake
+        # --------------------------------------------------
+
+        brake_canonical_name = self._best_brake_channel()
+
+        if brake_canonical_name is not None:
+
+            brake = self._numeric_channel(
+                brake_canonical_name
+            )
+
+            if brake is not None:
+
+                source_channel = (
+                    self.resolver.source_channel_name(
+                        brake_canonical_name
+                    )
+                    or ""
+                )
+
+                unit = (
+                    self.resolver.channel_unit(
+                        brake_canonical_name
+                    )
+                    or "bar"
+                )
+
+                kpis.append(
+                    KPI(
+                        name="Maximum Brake Pressure",
+                        value=float(brake.max()),
+                        unit=unit,
+                        category="Driver Inputs",
+                        source_channel=source_channel,
+                        description=(
+                            "Maximum recorded brake pressure."
+                        ),
+                    )
+                )
+
+                kpis.append(
+                    KPI(
+                        name="Average Brake Pressure",
+                        value=float(brake.mean()),
+                        unit=unit,
+                        category="Driver Inputs",
+                        source_channel=source_channel,
+                        description=(
+                            "Average brake pressure over the "
+                            "complete telemetry window."
+                        ),
+                    )
+                )
+
+                brake_usage_percentage = float(
+                    (brake > 1.0).mean()
+                    * 100.0
+                )
+
+                kpis.append(
+                    KPI(
+                        name="Brake Usage",
+                        value=brake_usage_percentage,
+                        unit="%",
+                        category="Driver Inputs",
+                        source_channel=source_channel,
+                        description=(
+                            "Percentage of samples where brake "
+                            "pressure is greater than 1 bar."
+                        ),
+                    )
+                )
+
+        return kpis
+
+    def _best_brake_channel(
+        self,
+    ) -> str | None:
+        """
+        Select the best available brake-pressure channel.
+
+        Priority:
+        1. Front brake pressure
+        2. Generic brake pressure
+        3. Rear brake pressure
+        """
+
+        for canonical_name in (
+            "brake_front",
+            "brake",
+            "brake_rear",
+        ):
+            if self.resolver.has_channel(
+                canonical_name
+            ):
+                return canonical_name
+
+        return None
 
     def vehicle_dynamics(self) -> list[KPI]:
         """
