@@ -14,6 +14,10 @@ if str(PROJECT_ROOT) not in sys.path:
 from src.services.telemetry_service import TelemetryService
 from src.visualization.plots import TelemetryPlotter
 from src.analysis.lap_detector import LapDetector
+from src.core.telemetry_resolver import TelemetryResolver
+from src.visualization.track_map import TrackMapPlotter
+from src.analysis.kpi_engine import KPIEngine
+
 
 st.set_page_config(
     page_title="Race Engineer Analytics",
@@ -142,6 +146,100 @@ if session.metadata:
     )
 
 
+st.divider()
+st.subheader("Engineering Summary")
+
+kpi_engine = KPIEngine(session)
+
+try:
+    kpi_results = kpi_engine.calculate()
+
+except Exception as error:
+    st.error(
+        "Engineering KPIs could not be calculated."
+    )
+    st.exception(error)
+    kpi_results = {}
+
+
+category_titles = {
+    "performance": "Performance",
+    "driver_inputs": "Driver Inputs",
+    "vehicle_dynamics": "Vehicle Dynamics",
+}
+
+
+for category_key, category_title in category_titles.items():
+
+    kpis = kpi_results.get(
+        category_key,
+        []
+    )
+
+    if not kpis:
+        continue
+
+    st.markdown(f"### {category_title}")
+
+    columns_per_row = 3
+
+    for start_index in range(
+        0,
+        len(kpis),
+        columns_per_row,
+    ):
+        row_kpis = kpis[
+            start_index:
+            start_index + columns_per_row
+        ]
+
+        columns = st.columns(
+            columns_per_row
+        )
+
+        for column, kpi in zip(
+            columns,
+            row_kpis,
+        ):
+            with column:
+                if kpi.value is None:
+                    metric_value = "N/A"
+
+                elif isinstance(
+                    kpi.value,
+                    float,
+                ):
+                    metric_value = (
+                        f"{kpi.value:.2f}"
+                    )
+
+                else:
+                    metric_value = str(
+                        kpi.value
+                    )
+
+                if kpi.unit:
+                    metric_value = (
+                        f"{metric_value} "
+                        f"{kpi.unit}"
+                    )
+
+                st.metric(
+                    label=kpi.name,
+                    value=metric_value,
+                )
+
+                if kpi.description:
+                    st.caption(
+                        kpi.description
+                    )
+
+                if kpi.source_channel:
+                    st.caption(
+                        f"Source: "
+                        f"{kpi.source_channel}"
+                    )
+
 with st.expander(
     "Available telemetry channels"
 ):
@@ -168,6 +266,7 @@ with st.expander(
 st.subheader("Dynamic Telemetry Viewer")
 
 plotter = TelemetryPlotter(session)
+resolver = TelemetryResolver(session)
 
 resolved_channels = (
     plotter.available_canonical_channels()
@@ -264,11 +363,62 @@ if not selected_y_channels:
     )
     st.stop()
 
+
+st.subheader("Synchronized Position")
+
+selected_index = st.slider(
+    "Telemetry sample",
+    min_value=0,
+    max_value=max(session.samples - 1, 0),
+    value=0,
+    step=1,
+)
+
+selected_information = {
+    "Sample": selected_index,
+}
+
+for canonical_name in (
+    "time",
+    "distance",
+    "lap_distance",
+    "speed",
+):
+    if resolver.has_channel(canonical_name):
+        value = resolver.channel(
+            canonical_name
+        ).iloc[selected_index]
+
+        selected_information[
+            resolver.display_name(canonical_name)
+        ] = value
+
+
+information_columns = st.columns(
+    len(selected_information)
+)
+
+for column, (label, value) in zip(
+    information_columns,
+    selected_information.items(),
+):
+    try:
+        displayed_value = f"{float(value):.3f}"
+    except (TypeError, ValueError):
+        displayed_value = str(value)
+
+    column.metric(
+        label,
+        displayed_value,
+    )
+
+
 try:
     figure = plotter.create_channel_plot(
         x_channel=x_channel,
         y_channels=selected_y_channels,
         separate_axes=separate_axes,
+        selected_index=selected_index,
     )
 
     st.plotly_chart(
@@ -290,6 +440,61 @@ except Exception as error:
         "The dynamic telemetry plot could not be generated."
     )
     st.exception(error)
+
+
+st.subheader("Track Map")
+
+if resolver.has_track_map():
+    map_color_options = [
+        channel
+        for channel in (
+            "speed",
+            "throttle",
+            "brake_front",
+            "brake",
+            "lateral_g",
+        )
+        if resolver.has_channel(channel)
+    ]
+
+    map_color_channel = None
+
+    if map_color_options:
+        map_color_channel = st.selectbox(
+            "Track-map colour channel",
+            options=map_color_options,
+            index=0,
+            format_func=lambda value: channel_labels[value],
+        )
+
+    try:
+        track_map_plotter = TrackMapPlotter(
+            session
+        )
+
+        track_figure = track_map_plotter.create_track_map(
+            selected_index=selected_index,
+            color_channel=map_color_channel,
+        )
+
+        st.plotly_chart(
+            track_figure,
+            width="stretch",
+        )
+
+    except Exception as error:
+        st.error(
+            "The track map could not be generated."
+        )
+        st.exception(error)
+
+else:
+    st.info(
+        "This telemetry file does not contain "
+        "supported track-position or GPS channels."
+    )
+
+
 st.divider()
 st.subheader("Lap Detection and Comparison")
 
