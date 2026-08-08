@@ -10,7 +10,15 @@ from src.app.settings import Settings, SettingsLoader
 from src.core.telemetry_session import TelemetrySession
 from src.services.kpi_export_service import KPIExportService
 from src.services.telemetry_service import TelemetryService
-
+from src.core.kpi import KPI
+from src.services.analysis_persistence_service import (
+    AnalysisPersistenceService,
+    DuplicateAnalysisError,
+    PersistenceResult,
+)
+from src.database.sqlalchemy_manager import (
+    SQLAlchemyDatabaseManager,
+)
 
 class Application:
     """
@@ -65,10 +73,33 @@ class Application:
             self.settings.application.name,
             self.settings.application.version,
         )
+        if self.container.session_factory is not None:
+            database_manager = SQLAlchemyDatabaseManager(
+                self.container.session_factory
+            )
+
+            database_manager.create_schema()
+
+            self.logger.info(
+                "Database schema verified."
+            )
 
     @property
     def settings(self) -> Settings:
         return self.container.settings
+
+    @property
+    def analysis_persistence_service(
+        self,
+    ) -> AnalysisPersistenceService | None:
+        return self.container.analysis_persistence_service
+
+    @property
+    def database_enabled(self) -> bool:
+        return (
+            self.settings.database.enabled
+            and self.analysis_persistence_service is not None
+        )
 
     @property
     def telemetry_service(
@@ -182,3 +213,109 @@ class Application:
         )
 
         return results
+
+    def save_analysis(
+        self,
+        telemetry_session: TelemetrySession,
+        kpi_results: dict[str, list[KPI]],
+        session_name: str | None = None,
+        session_type: str = "other",
+    ) -> PersistenceResult:
+        if not self.database_enabled:
+            raise RuntimeError(
+                "Database persistence is disabled."
+            )
+
+        persistence_service = (
+            self.analysis_persistence_service
+        )
+
+        if persistence_service is None:
+            raise RuntimeError(
+                "Analysis persistence service is unavailable."
+            )
+
+        self.logger.info(
+            "Saving analysis: file=%s session_name=%s",
+            telemetry_session.filename,
+            session_name or telemetry_session.source_file.stem,
+        )
+
+        try:
+            result = persistence_service.save_analysis(
+                telemetry_session=telemetry_session,
+                kpi_results=kpi_results,
+                session_name=session_name,
+                session_type=session_type,
+            )
+
+        except Exception:
+            self.logger.exception(
+                "Analysis persistence failed: %s",
+                telemetry_session.filename,
+            )
+            raise
+
+        self.logger.info(
+            "Analysis saved: race_session_id=%s kpis=%s",
+            result.race_session_id,
+            result.kpi_count,
+        )
+
+        return result
+
+    def shutdown(self) -> None:
+        if self.container.session_factory is not None:
+            self.container.session_factory.dispose()
+
+            self.logger.info(
+                "Database connection pool disposed."
+            )
+
+    def analysis_exists(
+        self,
+        telemetry_session: TelemetrySession,
+    ) -> bool:
+        persistence_service = (
+            self.analysis_persistence_service
+        )
+
+        if persistence_service is None:
+            return False
+
+        return persistence_service.analysis_exists(
+            telemetry_session
+        )
+
+    def existing_analysis_id(
+        self,
+        telemetry_session: TelemetrySession,
+    ) -> int | None:
+        persistence_service = (
+            self.analysis_persistence_service
+        )
+
+        if persistence_service is None:
+            return None
+
+        return (
+            persistence_service
+            .find_existing_session_id(
+                telemetry_session
+            )
+        )
+
+    def recent_analyses(
+        self,
+        limit: int = 10,
+    ) -> list[dict]:
+        persistence_service = (
+            self.analysis_persistence_service
+        )
+
+        if persistence_service is None:
+            return []
+
+        return persistence_service.recent_sessions(
+            limit=limit
+        )

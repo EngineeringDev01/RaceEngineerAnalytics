@@ -18,6 +18,9 @@ from src.core.telemetry_resolver import TelemetryResolver
 from src.visualization.track_map import TrackMapPlotter
 from src.analysis.kpi_engine import KPIEngine
 from src.services.kpi_export_service import KPIExportService
+from src.services.analysis_persistence_service import (
+    DuplicateAnalysisError,
+)
 
 st.set_page_config(
     page_title="Race Engineer Analytics",
@@ -251,6 +254,100 @@ kpi_dataframe = KPIExportService.to_dataframe(
     kpi_results
 )
 
+st.divider()
+
+st.subheader("Database")
+
+if not app.database_enabled:
+    st.info(
+        "Database persistence is currently disabled."
+    )
+
+else:
+    try:
+        already_saved = app.analysis_exists(
+            session
+        )
+
+    except Exception as error:
+        st.error(
+            "Unable to check database status."
+        )
+        st.exception(error)
+        already_saved = False
+
+    if already_saved:
+        existing_id = app.existing_analysis_id(
+            session
+        )
+
+        st.success(
+            "This telemetry file is already stored "
+            f"in the database as session ID "
+            f"{existing_id}."
+        )
+
+    else:
+        st.info(
+            "This telemetry analysis has not yet "
+            "been stored in the database."
+        )
+
+        session_name = st.text_input(
+            "Database session name",
+            value=Path(
+                session.filename
+            ).stem,
+        )
+
+        session_type = st.selectbox(
+            "Session type",
+            options=[
+                "practice",
+                "qualifying",
+                "race",
+                "warm_up",
+                "test",
+                "simulation",
+                "other",
+            ],
+            index=6,
+        )
+
+        save_analysis = st.button(
+            "Save Analysis to Database",
+            type="primary",
+        )
+
+        if save_analysis:
+            try:
+                result = app.save_analysis(
+                    telemetry_session=session,
+                    kpi_results=kpi_results,
+                    session_name=session_name,
+                    session_type=session_type,
+                )
+
+            except DuplicateAnalysisError as error:
+                st.warning(
+                    str(error)
+                )
+
+            except Exception as error:
+                st.error(
+                    "The analysis could not be saved."
+                )
+                st.exception(error)
+
+            else:
+                st.success(
+                    "Analysis saved successfully. "
+                    f"Session ID: "
+                    f"{result.race_session_id} — "
+                    f"KPIs: {result.kpi_count}"
+                )
+
+
 st.dataframe(
     kpi_dataframe,
     width="stretch",
@@ -315,6 +412,26 @@ with st.expander(
         width="stretch",
         hide_index=True,
     )
+
+
+with st.expander(
+    "Recent database sessions"
+):
+    recent_sessions = app.recent_analyses(
+        limit=10
+    )
+
+    if recent_sessions:
+        st.dataframe(
+            recent_sessions,
+            width="stretch",
+            hide_index=True,
+        )
+
+    else:
+        st.info(
+            "No analyses are stored yet."
+        )
 
 
 st.subheader("Dynamic Telemetry Viewer")
